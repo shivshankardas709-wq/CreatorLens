@@ -1,14 +1,11 @@
 from pathlib import Path
 p=Path('app/src/main/java/com/creatorlens/app/MainActivity.java')
 s=p.read_text()
-# Make connected state survive activity recreation; request fresh Google authorization silently when needed.
 s=s.replace('String accessToken;','String accessToken;\n    boolean youtubeConnected=false;')
 s=s.replace('void handleAuthorization(AuthorizationResult result){String token=result.getAccessToken();','void handleAuthorization(AuthorizationResult result){String token=result.getAccessToken();')
 s=s.replace('accessToken=token;if(statusText!=null)', 'accessToken=token; youtubeConnected=true; getPreferences(MODE_PRIVATE).edit().putBoolean("youtube_connected",true).apply(); if(statusText!=null)')
 s=s.replace('void dashboard(){', 'void dashboard(){')
-# Remove misleading connect-only analytics UI if patch ordering leaves it behind.
 s=s.replace('if(accessToken==null){ Button b=actionButton("Connect YouTube"); c.addView(b,new LinearLayout.LayoutParams(-1,dp(46))); b.setOnClickListener(v->authorizeYouTube()); return; }','if(accessToken==null){ Button b=actionButton("Reconnect YouTube"); c.addView(b,new LinearLayout.LayoutParams(-1,dp(46))); b.setOnClickListener(v->authorizeYouTube()); }')
-# Tool screens should remain usable without OAuth. Replace the generic mock action handlers with local results.
 s=s.replace('void field(String hint,String action,String target){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(14);e.setSingleLine(true);e.setPadding(dp(14),0,dp(14),0);e.setBackground(rounded(Color.WHITE,14));content.addView(e,new LinearLayout.LayoutParams(-1,dp(52)));LinearLayout.LayoutParams ep=(LinearLayout.LayoutParams)e.getLayoutParams();ep.bottomMargin=dp(10);e.setLayoutParams(ep);Button b=actionButton(action);content.addView(b,new LinearLayout.LayoutParams(-1,dp(48)));b.setOnClickListener(v->show(target));}', '''void field(String hint,String action,String target){
         EditText e=new EditText(this);e.setHint(hint);e.setTextSize(14);e.setSingleLine(true);e.setPadding(dp(14),0,dp(14),0);e.setBackground(rounded(Color.WHITE,14));content.addView(e,new LinearLayout.LayoutParams(-1,dp(52)));LinearLayout.LayoutParams ep=(LinearLayout.LayoutParams)e.getLayoutParams();ep.bottomMargin=dp(10);e.setLayoutParams(ep);
         Button b=actionButton(action);content.addView(b,new LinearLayout.LayoutParams(-1,dp(48)));
@@ -21,5 +18,18 @@ s=s.replace('void field(String hint,String action,String target){EditText e=new 
     void scriptResults(String q){header("Script Outline",q);section("Retention structure");titleCard("HOOK","Open with the most surprising question about "+q);titleCard("CONTEXT","Give only the background viewers need");titleCard("ESCALATION","Reveal evidence in stages");titleCard("OPEN LOOP","Promise the biggest reveal");titleCard("PAYOFF","Deliver the verified conclusion");}
     void competitorResults(String q){header("Competitor Research",q);section("Public research");opportunity("Channel/topic overlap","Analyzing","Public data");opportunity("Recent videos","Available","YouTube search");opportunity("Content patterns","Review","Public signals");}
 ''')
+s=s.replace('AuthorizationRequest req=AuthorizationRequest.builder().setRequestedScopes(scopes).build();','AuthorizationRequest req=AuthorizationRequest.builder().setRequestedScopes(scopes).setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT).build();')
+s=s.replace('catch(IntentSender.SendIntentException e){toast("Could not open Google authorization.");}','catch(IntentSender.SendIntentException e){showMessage("Google authorization","Could not open the Google authorization screen.\\n\\n"+e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage()));}')
+s=s.replace('}).addOnFailureListener(e->toast("Google authorization failed: "+e.getMessage()));','}).addOnFailureListener(e->showAuthError("Google authorization failed",e));')
+s=s.replace('@Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode==AUTH_REQUEST_CODE&&resultCode==RESULT_OK&&data!=null){try{handleAuthorization(Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(data));}catch(ApiException e){toast("Authorization was not completed.");}}}','@Override protected void onActivityResult(int requestCode,int resultCode,Intent data){super.onActivityResult(requestCode,resultCode,data);if(requestCode==AUTH_REQUEST_CODE){if(resultCode!=RESULT_OK){showMessage("Google authorization","Authorization did not complete. Result code: "+resultCode);return;}if(data==null){showMessage("Google authorization","Google returned no authorization data.");return;}try{handleAuthorization(Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(data));}catch(ApiException e){showAuthError("Authorization result error",e);}}}')
+s=s.replace('void handleAuthorization(AuthorizationResult result){String token=result.getAccessToken();if(token==null||token.isEmpty()){toast("No access token returned.");return;}','void handleAuthorization(AuthorizationResult result){String token=result.getAccessToken();if(token==null||token.isEmpty()){showMessage("Google authorization","No access token was returned.\\n\\nGranted scopes: "+String.valueOf(result.getGrantedScopes()));return;}')
+s=s.replace('else toast("YouTube API error: "+status);','else showMessage("YouTube API error","HTTP "+status+"\\n\\n"+extractApiError(body));')
+s=s.replace('catch(Exception e){runOnUiThread(()->toast("Connection error: "+e.getMessage()));}','catch(Exception e){runOnUiThread(()->showMessage("Connection error",e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage())));}')
+marker='    String formatNumber(String s){'
+helpers='''    String extractApiError(String body){try{JSONObject o=new JSONObject(body);JSONObject er=o.optJSONObject("error");if(er!=null){String msg=er.optString("message","");JSONArray errors=er.optJSONArray("errors");String reason="";if(errors!=null&&errors.length()>0)reason=errors.getJSONObject(0).optString("reason","");if(!reason.isEmpty()&&!msg.isEmpty())return reason+": "+msg;if(!msg.isEmpty())return msg;if(!reason.isEmpty())return reason;}}catch(Exception ignored){}return body==null||body.isEmpty()?"No error details returned.":body;}
+    void showAuthError(String title,Exception e){String msg=e==null?"Unknown error":e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage());if(e instanceof ApiException)msg+="\\nStatus code: "+((ApiException)e).getStatusCode();showMessage(title,msg);}
+    void showMessage(String title,String message){if(statusText!=null)statusText.setText(title+": "+message);new android.app.AlertDialog.Builder(this).setTitle(title).setMessage(message).setPositiveButton("OK",null).show();android.util.Log.e("CreatorLens",title+": "+message);}
+'''
+s=s.replace(marker,helpers+marker)
 p.write_text(s)
-print('Tool usability patch applied')
+print('OAuth diagnostic patch applied')
