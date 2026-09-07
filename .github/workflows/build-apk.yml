@@ -1,4 +1,5 @@
 name: Build CreatorLens APK
+
 on:
   workflow_dispatch:
   push:
@@ -7,31 +8,43 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
           accept-android-sdk-licenses: true
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10'
-      - name: Create development signing key
-        run: keytool -genkeypair -v -keystore app/creatorlens-debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=CreatorLens,OU=Development,O=CreatorLens,C=IN"
+
+      - name: Restore stable development signing key
+        env:
+          CREATORLENS_KEYSTORE_B64: ${{ secrets.CREATORLENS_KEYSTORE_B64 }}
+        run: |
+          echo "$CREATORLENS_KEYSTORE_B64" | base64 -d > app/creatorlens-debug.keystore
+
       - name: Apply real YouTube Analytics patch
         run: python3 patch_analytics.py
+
       - name: Apply CreatorLens tool usability patch
         run: python3 patch_toolfix.py
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
