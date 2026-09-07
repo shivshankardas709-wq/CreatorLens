@@ -28,6 +28,8 @@ jobs:
         run: keytool -genkeypair -v -keystore app/creatorlens-debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=CreatorLens,OU=Development,O=CreatorLens,C=IN"
       - name: Apply real YouTube Analytics patch
         run: python3 patch_analytics.py
+      - name: Apply CreatorLens tool usability patch
+        run: python3 patch_toolfix.py
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
       - name: Upload APK
