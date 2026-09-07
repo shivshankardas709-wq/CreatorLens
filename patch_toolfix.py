@@ -18,7 +18,7 @@ s=s.replace('void field(String hint,String action,String target){EditText e=new 
     void scriptResults(String q){header("Script Outline",q);section("Retention structure");titleCard("HOOK","Open with the most surprising question about "+q);titleCard("CONTEXT","Give only the background viewers need");titleCard("ESCALATION","Reveal evidence in stages");titleCard("OPEN LOOP","Promise the biggest reveal");titleCard("PAYOFF","Deliver the verified conclusion");}
     void competitorResults(String q){header("Competitor Research",q);section("Public research");opportunity("Channel/topic overlap","Analyzing","Public data");opportunity("Recent videos","Available","YouTube search");opportunity("Content patterns","Review","Public signals");}
 ''')
-# Do not force SELECT_ACCOUNT: the prior build used the standard authorization flow successfully.
+# Use Google's documented standard authorization flow; do not force account selection.
 s=s.replace('AuthorizationRequest req=AuthorizationRequest.builder().setRequestedScopes(scopes).setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT).build();','AuthorizationRequest req=AuthorizationRequest.builder().setRequestedScopes(scopes).build();')
 s=s.replace('catch(IntentSender.SendIntentException e){toast("Could not open Google authorization.");}','catch(IntentSender.SendIntentException e){showMessage("Google authorization","Could not open the Google authorization screen.\\n\\n"+e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage()));}')
 s=s.replace('}).addOnFailureListener(e->toast("Google authorization failed: "+e.getMessage()));','}).addOnFailureListener(e->showAuthError("Google authorization failed",e));')
