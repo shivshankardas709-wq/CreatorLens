@@ -24,4 +24,4 @@ if start in s:
     a=s.index(start); b=s.find('\n    void handleAuthorization(',a)
     if b!=-1: s=s[:a]+s[b+1:]
 p.write_text(s)
-print('Fixed ActivityResult launcher compile wrapper')
+print('Fixed ActivityResult launcher compile wrapper; trigger rebuild')
